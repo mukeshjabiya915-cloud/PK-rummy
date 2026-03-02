@@ -1,0 +1,108 @@
+// --- गेम की स्थिति (State Management) ---
+let game = {
+    multiplier: 1,
+    isFreeSpin: false,
+    freeSpinsLeft: 0,
+    combo: 0,
+    isSpinning: false
+};
+
+const sounds = {
+    spin: new Audio('https://freesound.org/data/previews/120/120373_824230-lq.mp3'),
+    blast: new Audio('https://freesound.org/data/previews/235/235911_3518703-lq.mp3'),
+    wild: new Audio('https://freesound.org/data/previews/411/411089_7741634-lq.mp3'),
+    combo: new Audio('https://freesound.org/data/previews/511/511484_10818222-lq.mp3')
+};
+
+function playSound(type) {
+    if (sounds[type]) {
+        sounds[type].currentTime = 0;
+        sounds[type].play().catch(() => {});
+    }
+}
+
+// --- मुख्य गेम शुरू करने का फंक्शन ---
+async function startGame() {
+    if (game.isSpinning) return;
+    
+    game.isSpinning = true;
+    document.getElementById('spin-btn').disabled = true;
+    
+    // अगर फ्री स्पिन नहीं है तो कॉम्बो और मल्टीप्लायर रीसेट करें
+    if (!game.isFreeSpin) {
+        game.combo = 0;
+        game.multiplier = 1;
+    } else {
+        game.freeSpinsLeft--;
+        if (game.freeSpinsLeft <= 0) game.isFreeSpin = false;
+    }
+
+    updateUI();
+    playSound('spin');
+    
+    // ग्रिड भरने का आपका फंक्शन (fillGrid) यहाँ कॉल करें
+    // await fillGrid(); 
+    
+    checkWins();
+}
+
+// --- जीत की जाँच और मल्टीप्लायर लॉजिक ---
+function checkWins() {
+    let winFound = false;
+    let toBlast = new Set();
+    let starsCount = 0;
+
+    // मान लें ROWS=4, COLS=5
+    for (let i = 0; i < 20; i++) {
+        let card = document.getElementById('slot-' + i).querySelector('.card');
+        if (card && card.innerHTML === '⭐') starsCount++;
+        // यहाँ आपकी मैचिंग लॉजिक आएगी (जैसा पिछले कोड में था)
+    }
+
+    // 3 स्टार्स पर फ्री स्पिन
+    if (starsCount >= 3 && !game.isFreeSpin) {
+        game.isFreeSpin = true;
+        game.freeSpinsLeft = 10;
+        playSound('wild');
+        alert("10 FREE SPINS!");
+    }
+
+    if (winFound) {
+        game.combo++;
+        calculateMultiplier(); // मल्टीप्लायर बढ़ाएं
+        playSound('blast');
+        
+        // ब्लास्ट और नए कार्ड गिरने का इंतज़ार करें
+        // toBlast.forEach(idx => blastCard(idx));
+        
+        updateUI();
+        setTimeout(checkWins, 1000); // दोबारा चेक करें (Cascading)
+    } else {
+        game.isSpinning = false;
+        document.getElementById('spin-btn').disabled = (game.freeSpinsLeft > 0);
+        
+        // अगर फ्री स्पिन्स बचे हैं तो अपने आप अगला स्पिन लें
+        if (game.freeSpinsLeft > 0) setTimeout(startGame, 1500);
+    }
+}
+
+// --- मल्टीप्लायर कैलकुलेशन (1x->2x->3x... और 2x->4x->6x...) ---
+function calculateMultiplier() {
+    let step = game.isFreeSpin ? 2 : 1;
+    let max = game.isFreeSpin ? 10 : 5;
+    
+    // कॉम्बो के आधार पर बढ़ाना
+    game.multiplier = Math.min(game.combo * step, max);
+    if (game.multiplier === 0) game.multiplier = step;
+}
+
+function updateUI() {
+    const multDiv = document.getElementById('multiplier-display');
+    if (multDiv) {
+        multDiv.innerHTML = `${game.multiplier}X`;
+        multDiv.style.color = game.isFreeSpin ? 'gold' : 'white';
+    }
+    
+    const spinDiv = document.getElementById('spins-left');
+    if (spinDiv) spinDiv.innerHTML = game.isFreeSpin ? `Free Spins: ${game.freeSpinsLeft}` : '';
+}
