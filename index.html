@@ -1,0 +1,63 @@
+<script>
+    // --- साउंड इफेक्ट्स लोड करना ---
+    // नोट: यहाँ मैंने फ्री साउंड्स के लिंक डाले हैं, आप अपनी पसंद की MP3 फाइलें इस्तेमाल कर सकते हैं।
+    const sounds = {
+        spin: new Audio('https://freesound.org/data/previews/120/120373_824230-lq.mp3'),
+        blast: new Audio('https://freesound.org/data/previews/235/235911_3518703-lq.mp3'),
+        wild: new Audio('https://freesound.org/data/previews/411/411089_7741634-lq.mp3'),
+        combo: new Audio('https://freesound.org/data/previews/511/511484_10818222-lq.mp3')
+    };
+
+    function playSound(type) {
+        if (sounds[type]) {
+            sounds[type].currentTime = 0; // शुरू से बजाने के लिए
+            sounds[type].play().catch(e => console.log("Sound error:", e));
+        }
+    }
+
+    function startGame() {
+        document.getElementById('spin-btn').disabled = true;
+        currentCombo = 1;
+        updateMultiplierUI();
+        playSound('spin'); // स्पिन की आवाज़
+        fillGrid();
+    }
+
+    function checkWins() {
+        let winFound = false;
+        let gridData = [];
+        for(let i=0; i<20; i++) {
+            let card = document.getElementById('slot-'+i).querySelector('.card');
+            gridData.push(card);
+        }
+
+        let toBlast = new Set();
+        for(let r = 0; r < ROWS; r++) {
+            let i1 = r * COLS + 0, i2 = r * COLS + 1, i3 = r * COLS + 2;
+            let c1 = gridData[i1], c2 = gridData[i2], c3 = gridData[i3];
+
+            if(!c1 || !c2 || !c3) continue;
+
+            let v1 = c1.innerHTML, v2 = c2.innerHTML, v3 = c3.innerHTML;
+            let m12 = (v1 === v2 || v1 === 'WILD' || v2 === 'WILD');
+            let m23 = (v2 === v3 || v2 === 'WILD' || v3 === 'WILD');
+
+            if (m12 && match23) {
+                winFound = true;
+                toBlast.add(i1); toBlast.add(i2); toBlast.add(i3);
+            }
+        }
+
+        if(winFound) {
+            playSound('blast'); // धमाके की आवाज़
+            toBlast.forEach(idx => blastCard(idx));
+            increaseMultiplier();
+            setTimeout(checkWins, 1000); 
+        } else {
+            document.getElementById('spin-btn').disabled = false;
+        }
+    }
+
+    function blastCard(index) {
+        let slot = document.getElementById('slot-'+index);
+        let card = slot.querySelector('.card');
